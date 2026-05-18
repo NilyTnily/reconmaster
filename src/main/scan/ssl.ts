@@ -56,7 +56,14 @@ export async function runSsl(ctx: ScanContext, hosts: string[]) {
   if (hasBinary(ctx, 'tlsx')) {
     const hostsFile = pathMod.join(ctx.outputDir, 'hosts.txt')
     fs.writeFileSync(hostsFile, hosts.join('\n'))
-    await runBinary(ctx, 'tlsx', ['-l', hostsFile, '-json', '-silent'], line => {
+    await runBinary(ctx, 'tlsx', [
+      '-l', hostsFile,
+      '-json', '-silent',
+      '-san', '-cn', '-so',
+      '-tls-version', '-cipher',
+      '-expired', '-self-signed', '-mismatched',
+      '-t', '50', '-rl', '150',
+    ], line => {
       try {
         const obj = JSON.parse(line)
         const expiry = obj.not_after

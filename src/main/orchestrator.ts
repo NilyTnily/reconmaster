@@ -100,30 +100,30 @@ export class ScanOrchestrator {
       })
     }
 
-    const dnsResults = ctx.options.dns !== false ? await safe(runDns(ctx), [], 'dns', 35_000) : []
-    const subdomains = ctx.options.subdomains !== false ? await safe(runSubdomains(ctx), [], 'subdomains', 360_000) : []
+    const dnsResults = ctx.options.dns !== false ? await safe(runDns(ctx), [], 'dns', 20_000) : []
+    const subdomains = ctx.options.subdomains !== false ? await safe(runSubdomains(ctx), [], 'subdomains', 55_000) : []
 
     const allHosts = [ctx.target, ...subdomains.map(s => s.host)]
-    const uniqueHosts = [...new Set(allHosts)].slice(0, 50)
+    const uniqueHosts = [...new Set(allHosts)].slice(0, 15)
 
     const [ports, httpResults, sslResults] = await Promise.all([
-      ctx.options.ports !== false ? safe(runPorts(ctx, uniqueHosts), [], 'ports', 360_000) : Promise.resolve([]),
-      ctx.options.http !== false ? safe(runHttpProbe(ctx, uniqueHosts), [], 'http', 240_000) : Promise.resolve([]),
-      ctx.options.ssl !== false ? safe(runSsl(ctx, uniqueHosts.slice(0, 20)), [], 'ssl', 150_000) : Promise.resolve([]),
+      ctx.options.ports !== false ? safe(runPorts(ctx, uniqueHosts), [], 'ports', 40_000) : Promise.resolve([]),
+      ctx.options.http !== false ? safe(runHttpProbe(ctx, uniqueHosts), [], 'http', 30_000) : Promise.resolve([]),
+      ctx.options.ssl !== false ? safe(runSsl(ctx, uniqueHosts.slice(0, 10)), [], 'ssl', 20_000) : Promise.resolve([]),
     ])
 
     const liveUrls = httpResults.filter(h => h.status > 0 && h.status < 500).map(h => h.url)
 
     const [dirs, vulns, osint, jsEndpoints] = await Promise.all([
-      ctx.options.dirs !== false ? safe(runDirEnum(ctx, liveUrls.slice(0, 5)), [], 'dirs', 660_000) : Promise.resolve([]),
-      ctx.options.vulns !== false ? safe(runVulns(ctx, liveUrls, httpResults, sslResults), [], 'vulns', 660_000) : Promise.resolve([]),
-      ctx.options.osint !== false ? safe(runOsint(ctx), [], 'osint', 240_000) : Promise.resolve([]),
-      ctx.options.crawl !== false ? safe(runCrawl(ctx, liveUrls.slice(0, 5)), [], 'crawl', 360_000) : Promise.resolve([]),
+      ctx.options.dirs !== false ? safe(runDirEnum(ctx, liveUrls.slice(0, 2)), [], 'dirs', 45_000) : Promise.resolve([]),
+      ctx.options.vulns !== false ? safe(runVulns(ctx, liveUrls, httpResults, sslResults), [], 'vulns', 50_000) : Promise.resolve([]),
+      ctx.options.osint !== false ? safe(runOsint(ctx), [], 'osint', 18_000) : Promise.resolve([]),
+      ctx.options.crawl !== false ? safe(runCrawl(ctx, liveUrls.slice(0, 3)), [], 'crawl', 40_000) : Promise.resolve([]),
     ])
 
     const [xssResults, idorResults] = await Promise.all([
-      ctx.options.xss !== false ? safe(runXss(ctx, liveUrls, jsEndpoints), [], 'xss', 360_000) : Promise.resolve([]),
-      ctx.options.idor !== false ? safe(runIdor(ctx, liveUrls, jsEndpoints, httpResults), [], 'idor', 360_000) : Promise.resolve([]),
+      ctx.options.xss !== false ? safe(runXss(ctx, liveUrls, jsEndpoints), [], 'xss', 25_000) : Promise.resolve([]),
+      ctx.options.idor !== false ? safe(runIdor(ctx, liveUrls, jsEndpoints, httpResults), [], 'idor', 20_000) : Promise.resolve([]),
     ])
 
     this.emit({

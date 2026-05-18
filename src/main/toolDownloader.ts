@@ -15,81 +15,86 @@ export interface DownloadDef {
 }
 
 export const DOWNLOAD_DEFS: DownloadDef[] = [
-  { name: 'subfinder',        repo: 'projectdiscovery/subfinder',    exe: 'subfinder.exe',        assetPattern: /subfinder_[\d.]+_windows_amd64\.zip$/i,         format: 'zip' },
-  { name: 'httpx',            repo: 'projectdiscovery/httpx',        exe: 'httpx.exe',            assetPattern: /httpx_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
-  { name: 'naabu',            repo: 'projectdiscovery/naabu',        exe: 'naabu.exe',            assetPattern: /naabu_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
-  { name: 'dnsx',             repo: 'projectdiscovery/dnsx',         exe: 'dnsx.exe',             assetPattern: /dnsx_[\d.]+_windows_amd64\.zip$/i,              format: 'zip' },
-  { name: 'tlsx',             repo: 'projectdiscovery/tlsx',         exe: 'tlsx.exe',             assetPattern: /tlsx_[\d.]+_windows_amd64\.zip$/i,              format: 'zip' },
-  { name: 'katana',           repo: 'projectdiscovery/katana',       exe: 'katana.exe',           assetPattern: /katana_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
-  { name: 'nuclei',           repo: 'projectdiscovery/nuclei',       exe: 'nuclei.exe',           assetPattern: /nuclei_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
-  { name: 'ffuf',             repo: 'ffuf/ffuf',                     exe: 'ffuf.exe',             assetPattern: /ffuf_[\d.]+_windows_amd64\.zip$/i,              format: 'zip' },
-  { name: 'amass',            repo: 'owasp-amass/amass',             exe: 'amass.exe',            assetPattern: /amass[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'gobuster',         repo: 'OJ/gobuster',                   exe: 'gobuster.exe',         assetPattern: /gobuster_windows_(amd64|x86_64)\.zip$/i,        format: 'zip' },
-  { name: 'gowitness',        repo: 'sensepost/gowitness',           exe: 'gowitness.exe',        assetPattern: /gowitness[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.(exe|zip|tar\.gz)$/i, format: 'exe' },
-  { name: 'assetfinder',      repo: 'tomnomnom/assetfinder',         exe: 'assetfinder.exe',      assetPattern: /assetfinder[_-].*windows[_-]amd64.*\.zip$/i,    format: 'zip' },
-  { name: 'nmap',             directUrl: 'https://nmap.org/dist/nmap-7.95-win32.zip', exe: 'nmap.exe', format: 'zip' },
-  { name: 'dalfox',           repo: 'hahwul/dalfox',                 exe: 'dalfox.exe',           assetPattern: /dalfox[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'alterx',           repo: 'projectdiscovery/alterx',       exe: 'alterx.exe',           assetPattern: /alterx_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
-  { name: 'shuffledns',       repo: 'projectdiscovery/shuffledns',   exe: 'shuffledns.exe',       assetPattern: /shuffledns_[\d.]+_windows_amd64\.zip$/i,        format: 'zip' },
-  { name: 'cdncheck',         repo: 'projectdiscovery/cdncheck',     exe: 'cdncheck.exe',         assetPattern: /cdncheck_[\d.]+_windows_amd64\.zip$/i,          format: 'zip' },
-  { name: 'asnmap',           repo: 'projectdiscovery/asnmap',       exe: 'asnmap.exe',           assetPattern: /asnmap_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
-  { name: 'mapcidr',          repo: 'projectdiscovery/mapcidr',      exe: 'mapcidr.exe',          assetPattern: /mapcidr_[\d.]+_windows_amd64\.zip$/i,           format: 'zip' },
-  { name: 'interactsh-client',repo: 'projectdiscovery/interactsh',   exe: 'interactsh-client.exe',assetPattern: /interactsh-client_[\d.]+_windows_amd64\.zip$/i, format: 'zip' },
-  { name: 'gau',              repo: 'lc/gau',                        exe: 'gau.exe',              assetPattern: /gau_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
-  // waybackurls: tomnomnom/waybackurls has no Windows binary releases — gau covers Wayback URL extraction
-  { name: 'gospider',         repo: 'jaeles-project/gospider',       exe: 'gospider.exe',         assetPattern: /gospider[_-]v?[\d.]+[_-]windows[_-](?:amd64|64bit|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'feroxbuster',      repo: 'epi052/feroxbuster',            exe: 'feroxbuster.exe',      assetPattern: /feroxbuster-v[\d.]+-x86_64-pc-windows-msvc\.zip$/i, format: 'zip' },
-  { name: 'crlfuzz',          repo: 'dwisiswant0/crlfuzz',           exe: 'crlfuzz.exe',          assetPattern: /crlfuzz[_-][\d.]+[_-]windows[_-]amd64.*\.zip$/i, format: 'zip' },
-  // hakrawler: hakluke/hakrawler has no binary release assets — katana + gospider cover JS crawling
+  // ── ProjectDiscovery suite ────────────────────────────────────────────────────
+  { name: 'subfinder',         repo: 'projectdiscovery/subfinder',      exe: 'subfinder.exe',         assetPattern: /subfinder_[\d.]+_windows_amd64\.zip$/i,          format: 'zip' },
+  { name: 'httpx',             repo: 'projectdiscovery/httpx',          exe: 'httpx.exe',             assetPattern: /httpx_[\d.]+_windows_amd64\.zip$/i,              format: 'zip' },
+  { name: 'naabu',             repo: 'projectdiscovery/naabu',          exe: 'naabu.exe',             assetPattern: /naabu_[\d.]+_windows_amd64\.zip$/i,              format: 'zip' },
+  { name: 'dnsx',              repo: 'projectdiscovery/dnsx',           exe: 'dnsx.exe',              assetPattern: /dnsx_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
+  { name: 'tlsx',              repo: 'projectdiscovery/tlsx',           exe: 'tlsx.exe',              assetPattern: /tlsx_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
+  { name: 'katana',            repo: 'projectdiscovery/katana',         exe: 'katana.exe',            assetPattern: /katana_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
+  { name: 'nuclei',            repo: 'projectdiscovery/nuclei',         exe: 'nuclei.exe',            assetPattern: /nuclei_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
+  { name: 'alterx',            repo: 'projectdiscovery/alterx',         exe: 'alterx.exe',            assetPattern: /alterx_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
+  { name: 'shuffledns',        repo: 'projectdiscovery/shuffledns',     exe: 'shuffledns.exe',        assetPattern: /shuffledns_[\d.]+_windows_amd64\.zip$/i,         format: 'zip' },
+  { name: 'cdncheck',          repo: 'projectdiscovery/cdncheck',       exe: 'cdncheck.exe',          assetPattern: /cdncheck_[\d.]+_windows_amd64\.zip$/i,           format: 'zip' },
+  { name: 'asnmap',            repo: 'projectdiscovery/asnmap',         exe: 'asnmap.exe',            assetPattern: /asnmap_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
+  { name: 'mapcidr',           repo: 'projectdiscovery/mapcidr',        exe: 'mapcidr.exe',           assetPattern: /mapcidr_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
+  { name: 'interactsh-client', repo: 'projectdiscovery/interactsh',     exe: 'interactsh-client.exe', assetPattern: /interactsh-client_[\d.]+_windows_amd64\.zip$/i,  format: 'zip' },
+  { name: 'notify',            repo: 'projectdiscovery/notify',         exe: 'notify.exe',            assetPattern: /notify_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
+  { name: 'uncover',           repo: 'projectdiscovery/uncover',        exe: 'uncover.exe',           assetPattern: /uncover_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
+  { name: 'cvemap',            repo: 'projectdiscovery/cvemap',         exe: 'cvemap.exe',            assetPattern: /cvemap_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
+  { name: 'proxify',           repo: 'projectdiscovery/proxify',        exe: 'proxify.exe',           assetPattern: /proxify_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
 
   // ── Subdomain & DNS ───────────────────────────────────────────────────────────
-  { name: 'puredns',          repo: 'd3mondev/puredns',              exe: 'puredns.exe',          assetPattern: /puredns[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'findomain',        repo: 'Findomain/findomain',           exe: 'findomain.exe',        assetPattern: /findomain[_.-].*(?:windows|win|x86_64-pc-windows).*\.(zip|exe)$/i, format: 'exe' },
-  { name: 'subzy',            repo: 'LukaSikic/subzy',               exe: 'subzy.exe',            assetPattern: /subzy_[\d.]+_windows_amd64\.zip$/i,                 format: 'zip' },
-  { name: 'gotator',          repo: 'Josue87/gotator',               exe: 'gotator.exe',          assetPattern: /gotator[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'chaos-client',     repo: 'projectdiscovery/chaos-client', exe: 'chaos-client.exe',     assetPattern: /chaos-client_[\d.]+_windows_amd64\.zip$/i,          format: 'zip' },
+  // amass release uses .tar.gz (not .zip) for Windows
+  { name: 'amass',             repo: 'owasp-amass/amass',               exe: 'amass.exe',             assetPattern: /amass_[\d.]+_windows_amd64\.tar\.gz$/i,          format: 'tgz' },
+  { name: 'findomain',         repo: 'Findomain/findomain',             exe: 'findomain.exe',         assetPattern: /findomain-windows\.exe\.zip$/i,                  format: 'zip' },
+  { name: 'assetfinder',       repo: 'tomnomnom/assetfinder',           exe: 'assetfinder.exe',       assetPattern: /assetfinder-windows-amd64.*\.zip$/i,             format: 'zip' },
 
   // ── Port & Network ────────────────────────────────────────────────────────────
-  { name: 'rustscan',         repo: 'RustScan/RustScan',             exe: 'rustscan.exe',         assetPattern: /rustscan.*(?:windows|win).*\.(?:zip|exe)$/i,        format: 'zip' },
-  { name: 'uncover',          repo: 'projectdiscovery/uncover',      exe: 'uncover.exe',          assetPattern: /uncover_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
-  { name: 'smap',             repo: 's0md3v/smap',                   exe: 'smap.exe',             assetPattern: /smap[_-]v?[\d.]*[_-]?(?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'cloudlist',        repo: 'projectdiscovery/cloudlist',    exe: 'cloudlist.exe',        assetPattern: /cloudlist_[\d.]+_windows_amd64\.zip$/i,             format: 'zip' },
-  // zgrab2: zmap/zgrab2 does not provide pre-built Windows binaries (Linux research tool)
+  { name: 'nmap',              directUrl: 'https://nmap.org/dist/nmap-7.95-win32.zip', exe: 'nmap.exe', format: 'zip' },
+  // rustscan uses x86_64-windows-rustscan.exe.zip naming
+  { name: 'rustscan',          repo: 'RustScan/RustScan',               exe: 'rustscan.exe',          assetPattern: /x86_64-windows-rustscan\.exe\.zip$/i,            format: 'zip' },
+  { name: 'smap',              repo: 's0md3v/smap',                     exe: 'smap.exe',              assetPattern: /smap_[\d.][^_]*_windows_amd64\.zip$/i,           format: 'zip' },
 
   // ── HTTP Probing ──────────────────────────────────────────────────────────────
-  { name: 'webanalyze',       repo: 'rverton/webanalyze',            exe: 'webanalyze.exe',       assetPattern: /webanalyze[_-][\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'httprobe',         repo: 'tomnomnom/httprobe',            exe: 'httprobe.exe',         assetPattern: /httprobe[_-].*(?:windows|win).*(?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  // gf (tomnomnom/gf) has no pre-built binary releases — install via go install github.com/tomnomnom/gf@latest
-  { name: 'unfurl',           repo: 'tomnomnom/unfurl',              exe: 'unfurl.exe',           assetPattern: /unfurl[_-].*(?:windows|win).*(?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'proxify',          repo: 'projectdiscovery/proxify',      exe: 'proxify.exe',          assetPattern: /proxify_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
+  { name: 'ffuf',              repo: 'ffuf/ffuf',                       exe: 'ffuf.exe',              assetPattern: /ffuf_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
+  { name: 'httprobe',          repo: 'tomnomnom/httprobe',              exe: 'httprobe.exe',          assetPattern: /httprobe-windows-amd64.*\.zip$/i,                format: 'zip' },
+  // webanalyze uses Windows_x86_64 (capital W, no version in name)
+  { name: 'webanalyze',        repo: 'rverton/webanalyze',              exe: 'webanalyze.exe',        assetPattern: /webanalyze_Windows_x86_64\.zip$/i,               format: 'zip' },
+  { name: 'unfurl',            repo: 'tomnomnom/unfurl',                exe: 'unfurl.exe',            assetPattern: /unfurl-windows-amd64.*\.zip$/i,                  format: 'zip' },
 
-  // ── URL & Content Discovery ───────────────────────────────────────────────────
-  { name: 'jsluice',          repo: 'BishopFox/jsluice',             exe: 'jsluice.exe',          assetPattern: /jsluice[_-]v?[\d.]+[_-]windows[_-]amd64.*\.zip$/i,      format: 'zip' },
-  { name: 'subjs',            repo: 'lc/subjs',                      exe: 'subjs.exe',            assetPattern: /subjs[_-][\d.]+[_-]windows[_-]amd64.*\.zip$/i,      format: 'zip' },
-  { name: 'cariddi',          repo: 'edoardottt/cariddi',            exe: 'cariddi.exe',          assetPattern: /cariddi[_-]v?[\d.]+[_-](?:Windows|windows)[_-](?:x86_64|amd64).*\.zip$/i, format: 'zip' },
-  { name: 'urlhunter',        repo: 'utkusen/urlhunter',             exe: 'urlhunter.exe',        assetPattern: /urlhunter[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'xcrawl3r',         repo: 'hueristiq/xcrawl3r',            exe: 'xcrawl3r.exe',         assetPattern: /xcrawl3r[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
+  // ── Directory & Vuln Fuzzing ──────────────────────────────────────────────────
+  // feroxbuster uses x86_64-windows-feroxbuster.exe.zip naming
+  { name: 'feroxbuster',       repo: 'epi052/feroxbuster',              exe: 'feroxbuster.exe',       assetPattern: /x86_64-windows-feroxbuster\.exe\.zip$/i,         format: 'zip' },
+  { name: 'gobuster',          repo: 'OJ/gobuster',                     exe: 'gobuster.exe',          assetPattern: /gobuster_Windows_x86_64\.zip$/i,                 format: 'zip' },
+  // nomore403 ships as a direct .exe (no zip wrapper)
+  { name: 'nomore403',         repo: 'devploit/nomore403',              exe: 'nomore403.exe',         assetPattern: /nomore403_windows_amd64\.exe$/i,                 format: 'exe' },
+  // x8 has a well-known typo "windown" in the release asset name
+  { name: 'x8',                repo: 'Sh1Yo/x8',                        exe: 'x8.exe',                assetPattern: /x86-windown-x8\.zip$/i,                          format: 'zip' },
+  { name: 'crlfuzz',           repo: 'dwisiswant0/crlfuzz',             exe: 'crlfuzz.exe',           assetPattern: /crlfuzz_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
 
-  // ── Fuzzing ───────────────────────────────────────────────────────────────────
-  { name: 'x8',               repo: 'Sh1Yo/x8',                      exe: 'x8.exe',               assetPattern: /x8[_-].*(?:windows|win).*\.zip$/i,                  format: 'zip' },
-  { name: 'nomore403',        repo: 'devploit/nomore403',             exe: 'nomore403.exe',        assetPattern: /nomore403[_-]v?[\d.]+[_-](?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'shortscan',        repo: 'bitquark/shortscan',             exe: 'shortscan.exe',        assetPattern: /shortscan[_-](?:v?[\d.]+[_-])?(?:windows|Windows)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'jwt-hack',         repo: 'hahwul/jwt-hack',               exe: 'jwt-hack.exe',         assetPattern: /jwt-hack[_-]v?.*(?:windows|win).*(?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'qsreplace',        repo: 'tomnomnom/qsreplace',           exe: 'qsreplace.exe',        assetPattern: /qsreplace[_-].*(?:windows|win).*(?:amd64|x86_64).*\.zip$/i, format: 'zip' },
+  // ── Crawling & URL Discovery ──────────────────────────────────────────────────
+  { name: 'gau',               repo: 'lc/gau',                          exe: 'gau.exe',               assetPattern: /gau_[\d.]+_windows_amd64\.zip$/i,                format: 'zip' },
+  // gospider uses v-prefixed version with x86_64 arch
+  { name: 'gospider',          repo: 'jaeles-project/gospider',         exe: 'gospider.exe',          assetPattern: /gospider_v[\d.]+_windows_x86_64\.zip$/i,         format: 'zip' },
+  { name: 'cariddi',           repo: 'edoardottt/cariddi',              exe: 'cariddi.exe',           assetPattern: /cariddi_[\d.]+_windows_amd64\.zip$/i,            format: 'zip' },
+  { name: 'subjs',             repo: 'lc/subjs',                        exe: 'subjs.exe',             assetPattern: /subjs_[\d.]+_windows_amd64\.zip$/i,              format: 'zip' },
+  { name: 'xcrawl3r',          repo: 'hueristiq/xcrawl3r',              exe: 'xcrawl3r.exe',          assetPattern: /xcrawl3r_[\d.]+_windows_amd64\.zip$/i,           format: 'zip' },
+  // urlhunter uses Windows_x86_64 (capital W, no version in name)
+  { name: 'urlhunter',         repo: 'utkusen/urlhunter',               exe: 'urlhunter.exe',         assetPattern: /urlhunter_Windows_x86_64\.zip$/i,                format: 'zip' },
+  { name: 'qsreplace',         repo: 'tomnomnom/qsreplace',             exe: 'qsreplace.exe',         assetPattern: /qsreplace-windows-amd64.*\.zip$/i,               format: 'zip' },
+
+  // ── XSS & Injection ──────────────────────────────────────────────────────────
+  { name: 'dalfox',            repo: 'hahwul/dalfox',                   exe: 'dalfox.exe',            assetPattern: /dalfox-windows-amd64\.zip$/i,                    format: 'zip' },
 
   // ── Vulnerability Scanning ────────────────────────────────────────────────────
-  { name: 'cvemap',           repo: 'projectdiscovery/cvemap',       exe: 'cvemap.exe',           assetPattern: /cvemap_[\d.]+_windows_amd64\.zip$/i,                format: 'zip' },
-  { name: 'trufflehog',       repo: 'trufflesecurity/trufflehog',    exe: 'trufflehog.exe',       assetPattern: /trufflehog[_-]v?[\d.]+[_-]windows[_-]amd64.*\.(?:zip|exe)$/i, format: 'zip' },
-  // ppmap (kleiton0x00/ppmap) is a JavaScript/Node.js tool — no binary releases
-  { name: 'osv-scanner',      repo: 'google/osv-scanner',            exe: 'osv-scanner.exe',      assetPattern: /osv-scanner[_-]v?[\d.]+[_-]windows[_-]amd64.*\.(?:zip|exe)$/i, format: 'zip' },
-  { name: 'jaeles',           repo: 'jaeles-project/jaeles',          exe: 'jaeles.exe',           assetPattern: /jaeles[_-]v?[\d.]+[_-]windows[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
+  // trufflehog ships as .tar.gz for Windows
+  { name: 'trufflehog',        repo: 'trufflesecurity/trufflehog',      exe: 'trufflehog.exe',        assetPattern: /trufflehog_[\d.]+_windows_amd64\.tar\.gz$/i,     format: 'tgz' },
+  // osv-scanner ships as a direct .exe
+  { name: 'osv-scanner',       repo: 'google/osv-scanner',              exe: 'osv-scanner.exe',       assetPattern: /osv-scanner_windows_amd64\.exe$/i,               format: 'exe' },
 
-  // ── OOB / Interaction ─────────────────────────────────────────────────────────
-  { name: 'notify',           repo: 'projectdiscovery/notify',       exe: 'notify.exe',           assetPattern: /notify_[\d.]+_windows_amd64\.zip$/i,                format: 'zip' },
-  { name: 'hetty',            repo: 'dstotijn/hetty',                 exe: 'hetty.exe',            assetPattern: /hetty[_-][\d.]+[_-]windows[_-]amd64.*\.zip$/i,      format: 'zip' },
-  { name: 'cent',             repo: 'xm1k3/cent',                    exe: 'cent.exe',             assetPattern: /cent[_-][\d.]+[_-]windows[_-]amd64.*\.zip$/i,       format: 'zip' },
-  { name: 'mantra',           repo: 'MrEmpy/Mantra',                  exe: 'mantra.exe',           assetPattern: /[Mm]antra[_-]v?[\d.]+[_-](?:[Ww]indows|win)[_-](?:amd64|x86_64).*\.zip$/i, format: 'zip' },
-  { name: 'surf',             repo: 'assetnote/surf',                 exe: 'surf.exe',             assetPattern: /surf[_-][\d.]+[_-]windows[_-]amd64.*\.zip$/i,       format: 'zip' },
+  // ── Screenshots & Visual ─────────────────────────────────────────────────────
+  // gowitness ships as a direct .exe (no archive)
+  { name: 'gowitness',         repo: 'sensepost/gowitness',             exe: 'gowitness.exe',         assetPattern: /gowitness-[\d.]+-windows-amd64\.exe$/i,          format: 'exe' },
+
+  // ── SSRF & Open Redirect ─────────────────────────────────────────────────────
+  { name: 'surf',              repo: 'assetnote/surf',                  exe: 'surf.exe',              assetPattern: /surf_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
+
+  // ── Nuclei Templates ─────────────────────────────────────────────────────────
+  { name: 'cent',              repo: 'xm1k3/cent',                      exe: 'cent.exe',              assetPattern: /cent_[\d.]+_windows_amd64\.zip$/i,               format: 'zip' },
+
+  // ── OOB Interaction ──────────────────────────────────────────────────────────
+  { name: 'hetty',             repo: 'dstotijn/hetty',                  exe: 'hetty.exe',             assetPattern: /hetty_[\d.]+_Windows_x86_64\.zip$/i,             format: 'zip' },
 ]
 
 // ── HTTP helpers ──────────────────────────────────────────────────────────────

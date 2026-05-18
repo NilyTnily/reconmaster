@@ -146,7 +146,15 @@ export async function runHttpProbe(ctx: ScanContext, hosts: string[]) {
   if (hasBinary(ctx, 'httpx')) {
     const hostsFile = pathMod.join(ctx.outputDir, 'hosts.txt')
     fs.writeFileSync(hostsFile, hosts.join('\n'))
-    await runBinary(ctx, 'httpx', ['-l', hostsFile, '-status-code', '-title', '-tech-detect', '-server', '-content-length', '-web-server', '-follow-redirects', '-json', '-silent', '-rate-limit', '150', '-timeout', '10', '-threads', '50', '-random-agent'], line => {
+    await runBinary(ctx, 'httpx', [
+      '-l', hostsFile,
+      '-status-code', '-title', '-tech-detect', '-server', '-content-length',
+      '-web-server', '-follow-redirects', '-json', '-silent',
+      '-rate-limit', '150', '-timeout', '10', '-threads', '50',
+      '-random-agent', '-favicon', '-hash', 'md5',
+      '-probe', '-no-fallback',
+      '-ports', '80,443,8080,8443,8888,3000,4000,5000,9000,9090',
+    ], line => {
       try {
         const obj = JSON.parse(line)
         const headers: Record<string, string> = {}
@@ -164,7 +172,7 @@ export async function runHttpProbe(ctx: ScanContext, hosts: string[]) {
         }
         results.push(result)
       } catch { /* not json */ }
-    }, 180_000)
+    }, 20_000)
   } else {
     const scanHosts = hosts.slice(0, 30)
     ctx.log('http', `Probing ${scanHosts.length} hosts`, 'info')
@@ -173,8 +181,8 @@ export async function runHttpProbe(ctx: ScanContext, hosts: string[]) {
 
   // webanalyze: Wappalyzer-based tech fingerprinting
   if (hasBinary(ctx, 'webanalyze') && results.length > 0) {
-    ctx.log('webanalyze', `Tech fingerprinting ${Math.min(results.length, 20)} URLs`, 'info')
-    for (const r of results.slice(0, 20)) {
+    ctx.log('webanalyze', `Tech fingerprinting ${Math.min(results.length, 5)} URLs`, 'info')
+    for (const r of results.slice(0, 5)) {
       if (ctx.isCancel()) break
       await runBinary(ctx, 'webanalyze', ['-host', r.url, '-output', 'json'], line => {
         try {
@@ -187,7 +195,7 @@ export async function runHttpProbe(ctx: ScanContext, hosts: string[]) {
             }
           }
         } catch { /* not json */ }
-      })
+      }, 10_000)
     }
   }
 
@@ -201,7 +209,7 @@ export async function runHttpProbe(ctx: ScanContext, hosts: string[]) {
           results.push({ url: line.trim(), status: 200 })
           ctx.log('httprobe', line.trim(), 'success')
         }
-      })
+      }, 12_000)
     }
   }
 
@@ -235,9 +243,9 @@ export async function runHttpProbe(ctx: ScanContext, hosts: string[]) {
     const screenshotDir = pathMod.join(ctx.outputDir, 'screenshots')
     if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true })
     const gowitUrlsFile = pathMod.join(ctx.outputDir, 'gowitness_urls.txt')
-    fs.writeFileSync(gowitUrlsFile, results.slice(0, 30).map(r => r.url).join('\n'))
-    ctx.log('gowitness', `Screenshotting ${Math.min(results.length, 30)} live URLs`, 'info')
-    await runBinary(ctx, 'gowitness', ['file', '-f', gowitUrlsFile, '--screenshot-path', screenshotDir, '--timeout', '10', '--threads', '5'], () => {}, 120_000)
+    fs.writeFileSync(gowitUrlsFile, results.slice(0, 10).map(r => r.url).join('\n'))
+    ctx.log('gowitness', `Screenshotting ${Math.min(results.length, 10)} live URLs`, 'info')
+    await runBinary(ctx, 'gowitness', ['file', '-f', gowitUrlsFile, '--screenshot-path', screenshotDir, '--timeout', '10', '--threads', '5'], () => {}, 20_000)
     ctx.log('gowitness', `Screenshots saved to ${screenshotDir}`, 'success')
   }
 

@@ -89,8 +89,8 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
 
   // rustscan: ultra-fast pre-scan to find open ports, then naabu/nmap refines
   if (hasBinary(ctx, 'rustscan')) {
-    ctx.log('rustscan', `Ultra-fast port scan on ${hosts.slice(0, 5).join(', ')}`, 'info')
-    for (const host of hosts.slice(0, 5)) {
+    ctx.log('rustscan', `Ultra-fast port scan on ${hosts.slice(0, 3).join(', ')}`, 'info')
+    for (const host of hosts.slice(0, 3)) {
       if (ctx.isCancel()) break
       await runBinary(ctx, 'rustscan', ['-a', host, '--ulimit', '5000', '--range', '1-65535', '-q', '--no-nmap', '--timeout', '1500'], line => {
         const m = line.match(/^Open\s+(.+):(\d+)$/) || line.match(/^(.+):(\d+)\s*$/)
@@ -100,14 +100,14 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
             results.push({ host: m[1], port, protocol: 'tcp', state: 'open', service: guessService(port), risk: getRisk(port) })
           }
         }
-      })
+      }, 25_000)
     }
   }
 
   // uncover: search-engine based host/port discovery (Shodan InternetDB — no key needed)
   if (hasBinary(ctx, 'uncover')) {
     ctx.log('uncover', `Search-engine host/port discovery for ${ctx.target}`, 'info')
-    await runBinary(ctx, 'uncover', ['-q', ctx.target, '-silent', '-e', 'shodan-idb'], line => {
+    await runBinary(ctx, 'uncover', ['-q', ctx.target, '-silent', '-e', 'shodan-idb,censys,fofa,hunter,quake,zoomeye', '-limit', '100'], line => {
       const m = line.match(/^(.+):(\d+)$/)
       if (m) {
         const port = parseInt(m[2])
@@ -116,13 +116,13 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
           ctx.log('uncover', `${m[1]}:${port}`, 'info')
         }
       }
-    }, 60_000)
+    }, 20_000)
   }
 
   if (hasBinary(ctx, 'naabu')) {
     const hostsFile = pathMod.join(ctx.outputDir, 'hosts.txt')
     fs.writeFileSync(hostsFile, hosts.join('\n'))
-    await runBinary(ctx, 'naabu', ['-list', hostsFile, '-p', '1-10000', '-silent', '-rate', '1000', '-timeout', '1000', '-retries', '1'], line => {
+    await runBinary(ctx, 'naabu', ['-list', hostsFile, '-p', '21,22,23,25,53,80,81,443,445,3000,3306,3389,4000,4443,4444,5000,5432,5900,6379,7001,8000,8008,8080,8081,8443,8444,8888,9000,9090,9200,9300,9443,27017,50000', '-silent', '-rate', '1000', '-timeout', '1000', '-retries', '1'], line => {
       const m = line.match(/^(.+):(\d+)$/)
       if (m) {
         const port = parseInt(m[2])
@@ -130,7 +130,7 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
         if (!results.find(r => r.host === m[1] && r.port === port))
           results.push({ host: m[1], port, protocol: 'tcp', state: 'open', service, risk: getRisk(port) })
       }
-    }, 300_000)
+    }, 20_000)
   } else {
     const ports = [
       21, 22, 23, 25, 53, 80, 81, 88, 110, 111, 135, 139, 143, 443, 444, 445,
@@ -156,9 +156,9 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
   }
 
   // Banner grabbing for open ports
-  ctx.log('ports', `Grabbing banners for ${Math.min(results.length, 30)} open ports...`, 'info')
+  ctx.log('ports', `Grabbing banners for ${Math.min(results.length, 10)} open ports...`, 'info')
   await Promise.all(
-    results.slice(0, 30).map(async r => {
+    results.slice(0, 10).map(async r => {
       if (ctx.isCancel()) return
       const banner = await grabBanner(r.host, r.port)
       if (banner) {
@@ -174,14 +174,14 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
     const hostsFile = pathMod.join(ctx.outputDir, 'hosts.txt')
     fs.writeFileSync(hostsFile, hosts.join('\n'))
     const openPorts = [...new Set(results.map(r => r.port))].join(',')
-    await runBinary(ctx, 'nmap', ['-sV', '-Pn', '-T4', '-p', openPorts, '-iL', hostsFile, '--open', '-oN', pathMod.join(ctx.outputDir, 'nmap.txt')], line => {
+    await runBinary(ctx, 'nmap', ['-sV', '-sC', '-Pn', '-T4', '-p', openPorts, '-iL', hostsFile, '--open', '-oN', pathMod.join(ctx.outputDir, 'nmap.txt')], line => {
       const m = line.match(/^(\d+)\/(tcp|udp)\s+open\s+(\S+)\s*(.*)$/)
       if (m) {
         const port = parseInt(m[1])
         const r = results.find(x => x.port === port)
         if (r) { r.service = m[3]; r.version = m[4].trim() }
       }
-    }, 180_000)
+    }, 20_000)
   }
 
   // zgrab2: multi-protocol banner grabbing for open ports
@@ -218,7 +218,6 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
     fs.writeFileSync(hostsFile2, hosts.join('\n'))
     ctx.log('cdncheck', 'Detecting CDN/cloud infrastructure on discovered hosts', 'info')
     await runBinary(ctx, 'cdncheck', ['-l', hostsFile2, '-silent', '-resp'], line => {
-      // cdncheck outputs: host [CDN-Name]
       const m = line.match(/^(.+?)\s+\[(.+?)\]/)
       if (m) {
         const host = m[1].trim()
@@ -230,7 +229,7 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
         }
         ctx.log('cdncheck', `${host} → ${cdn}`, 'info')
       }
-    })
+    }, 15_000)
   }
 
   // ASN mapping — log IP-to-ASN for context
@@ -240,7 +239,7 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
     fs.writeFileSync(hostsFile3, hosts.join('\n'))
     await runBinary(ctx, 'asnmap', ['-l', hostsFile3, '-silent'], line => {
       ctx.log('asnmap', line, 'info')
-    })
+    }, 12_000)
   }
 
   // smap: passive Shodan InternetDB port lookup (no API key required)
@@ -249,7 +248,6 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
     const smapHostsFile = pathMod.join(ctx.outputDir, 'hosts_smap.txt')
     fs.writeFileSync(smapHostsFile, hosts.slice(0, 10).join('\n'))
     await runBinary(ctx, 'smap', ['-iL', smapHostsFile, '-oG', pathMod.join(ctx.outputDir, 'smap.gnmap')], line => {
-      // smap outputs nmap-grepable format: Host: IP  Ports: PORT/open/PROTO/SERVICE...
       const hostMatch = line.match(/Host:\s+(\S+)/)
       const portsMatch = line.match(/Ports:\s+(.+)/)
       if (hostMatch && portsMatch) {
@@ -265,7 +263,7 @@ export async function runPorts(ctx: ScanContext, hosts: string[]) {
           }
         }
       }
-    }, 60_000)
+    }, 20_000)
   }
 
   ctx.log('ports', `Found ${results.length} open ports`, 'success')

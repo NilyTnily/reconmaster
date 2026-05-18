@@ -160,15 +160,33 @@ export async function runVulns(ctx: ScanContext,
   const results: { id: string; name: string; severity: string; host: string; description?: string; tags?: string[]; matched?: string; remediation?: string; cvss?: number }[] = []
 
   if (hasBinary(ctx, 'nuclei')) {
-    const urlsFile = pathMod.join(ctx.outputDir, 'live_urls.txt')
-    fs.writeFileSync(urlsFile, liveUrls.join('\n'))
-    // -j outputs JSONL to stdout; -duc skips template update check on every run
-    await runBinary(ctx, 'nuclei', ['-l', urlsFile, '-j', '-silent', '-duc', '-severity', 'critical,high,medium,low,info', '-rl', '150', '-bs', '25', '-c', '25', '-timeout', '10'], line => {
+    const urlsFile = pathMod.join(ctx.outputDir, 'nuclei_urls.txt')
+    fs.writeFileSync(urlsFile, liveUrls.slice(0, 5).join('\n'))
+    await runBinary(ctx, 'nuclei', [
+      '-l', urlsFile,
+      '-j', '-silent', '-duc',
+      '-severity', 'critical,high,medium',
+      '-automatic-scan',
+      '-tags', 'cve,exposed,misconfig,injection,sqli,xss,ssrf,lfi,rce,default-login',
+      '-rl', '150', '-bs', '25', '-c', '50',
+      '-timeout', '5', '-retries', '1',
+      '-stats',
+    ], line => {
       try {
         const obj = JSON.parse(line)
-        results.push({ id: obj['template-id'] || 'unknown', name: obj.info?.name || 'Unknown', severity: obj.info?.severity || 'info', host: obj.matched_at || obj.host || '', description: obj.info?.description, tags: obj.info?.tags, matched: obj.matched_at })
+        results.push({
+          id: obj['template-id'] || 'unknown',
+          name: obj.info?.name || 'Unknown',
+          severity: obj.info?.severity || 'info',
+          host: obj.matched_at || obj.host || '',
+          description: obj.info?.description,
+          tags: obj.info?.tags,
+          matched: obj.matched_at,
+          remediation: obj.info?.remediation || `Fix ${obj.info?.name}. See: ${obj.info?.reference?.[0] || ''}`,
+          cvss: obj.info?.classification?.cvss_metrics?.cvss_score,
+        })
       } catch { /* not json */ }
-    }, 300_000)
+    }, 35_000)
   } else {
     ctx.log('vulns', `Running built-in security checks on ${liveUrls.length} URLs`, 'info')
     await Promise.all(liveUrls.slice(0, 10).map(url => builtinVulnChecks(ctx, url, results)))
@@ -178,8 +196,8 @@ export async function runVulns(ctx: ScanContext,
 
   // crlfuzz: CRLF injection scanner
   if (hasBinary(ctx, 'crlfuzz') && liveUrls.length > 0) {
-    ctx.log('crlfuzz', `CRLF injection scan on ${Math.min(liveUrls.length, 10)} URLs`, 'info')
-    for (const url of liveUrls.slice(0, 10)) {
+    ctx.log('crlfuzz', `CRLF injection scan on ${Math.min(liveUrls.length, 5)} URLs`, 'info')
+    for (const url of liveUrls.slice(0, 5)) {
       if (ctx.isCancel()) break
       await runBinary(ctx, 'crlfuzz', ['-u', url, '-s'], line => {
         if (line.includes('VULN') || line.includes('[!]') || line.includes('Found')) {
@@ -197,14 +215,13 @@ export async function runVulns(ctx: ScanContext,
           })
           ctx.log('crlfuzz', `[CRLF] ${url}`, 'warn')
         }
-      }, 30_000)
+      }, 15_000)
     }
   }
 
-  // cvemap: CVE lookup for technologies detected on live hosts
   if (hasBinary(ctx, 'cvemap') && httpResults.length > 0) {
     const allTechs = [...new Set(httpResults.flatMap(r => (r as { tech?: string[] }).tech || []))]
-    for (const tech of allTechs.slice(0, 10)) {
+    for (const tech of allTechs.slice(0, 5)) {
       if (ctx.isCancel()) break
       await runBinary(ctx, 'cvemap', ['-p', tech, '-severity', 'critical,high', '-json', '-limit', '5'], line => {
         try {
@@ -226,7 +243,7 @@ export async function runVulns(ctx: ScanContext,
             }
           }
         } catch { /* not json */ }
-      })
+      }, 10_000)
     }
   }
 
@@ -253,37 +270,12 @@ export async function runVulns(ctx: ScanContext,
           ctx.log('trufflehog', `[LEAKED] ${detectorName}: ${masked}`, 'warn')
         }
       } catch { /* not json */ }
-    })
-  }
-
-  // jaeles: signature-based web application vulnerability scanning
-  if (hasBinary(ctx, 'jaeles') && liveUrls.length > 0) {
-    ctx.log('jaeles', `Signature-based scan on ${Math.min(liveUrls.length, 10)} URLs`, 'info')
-    const urlsFile = pathMod.join(ctx.outputDir, 'jaeles_urls.txt')
-    fs.writeFileSync(urlsFile, liveUrls.slice(0, 10).join('\n'))
-    await runBinary(ctx, 'jaeles', ['scan', '-U', urlsFile, '--json-output', pathMod.join(ctx.outputDir, 'jaeles.json'), '--no-output'], line => {
-      try {
-        const obj = JSON.parse(line)
-        if (obj.vuln || obj.risk) {
-          results.push({
-            id: obj.sign_id || 'jaeles-finding',
-            name: obj.sign_info?.name || 'Jaeles Finding',
-            severity: (obj.risk || 'medium').toLowerCase(),
-            host: obj.req?.target || liveUrls[0],
-            description: obj.sign_info?.desc || obj.output,
-            tags: ['jaeles', 'signature'],
-            matched: obj.output?.slice(0, 200),
-            remediation: obj.sign_info?.ref || 'Review the finding and apply the recommended security fix.',
-          })
-          ctx.log('jaeles', `[${obj.risk || 'medium'}] ${obj.sign_info?.name || 'finding'} at ${obj.req?.target}`, 'warn')
-        }
-      } catch { /* not json */ }
-    })
+    }, 20_000)
   }
 
   // surf: SSRF parameter discovery — tests URL parameters for server-side request forgery
   if (hasBinary(ctx, 'surf') && liveUrls.length > 0) {
-    const urlsWithParams = liveUrls.filter(u => u.includes('?')).slice(0, 20)
+    const urlsWithParams = liveUrls.filter(u => u.includes('?')).slice(0, 5)
     if (urlsWithParams.length > 0) {
       ctx.log('surf', `SSRF parameter testing on ${urlsWithParams.length} URLs with parameters`, 'info')
       await runBinaryStdin(ctx, 'surf', ['-silent'], urlsWithParams.join('\n'), line => {
@@ -309,7 +301,7 @@ export async function runVulns(ctx: ScanContext,
   // osv-scanner: dependency vulnerability scan on publicly exposed manifest/lock files
   if (hasBinary(ctx, 'osv-scanner') && liveUrls.length > 0) {
     ctx.log('osv-scanner', 'Fetching dependency manifests from live URLs', 'info')
-    const manifestPaths = ['/package-lock.json', '/yarn.lock', '/composer.lock', '/requirements.txt', '/go.sum', '/Cargo.lock', '/package.json']
+    const manifestPaths = ['/package-lock.json', '/requirements.txt']
     let foundManifest = false
     for (const url of liveUrls.slice(0, 5)) {
       if (ctx.isCancel()) break

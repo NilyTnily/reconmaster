@@ -61,12 +61,12 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
     const urlsWithParams = [
       ...liveUrls.filter(u => u.includes('?')),
       ...jsEndpoints.filter(e => e.type === 'parameter' || (e.url && e.url.includes('?'))).map(e => e.url),
-    ].slice(0, 30)
+    ].slice(0, 20)
 
-    const syntheticUrls = liveUrls.slice(0, 5).flatMap(u =>
-      COMMON_PARAMS.slice(0, 5).map(p => `${u}?${p}=test`)
+    const syntheticUrls = liveUrls.slice(0, 3).flatMap(u =>
+      COMMON_PARAMS.slice(0, 4).map(p => `${u}?${p}=test`)
     )
-    const allTargets = [...new Set([...urlsWithParams, ...syntheticUrls])].slice(0, 50)
+    const allTargets = [...new Set([...urlsWithParams, ...syntheticUrls])].slice(0, 25)
 
     if (allTargets.length > 0) {
       const urlsFile = pathMod.join(ctx.outputDir, 'xss_urls.txt')
@@ -75,10 +75,13 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
         'file', urlsFile,
         '--silence', '--no-color',
         '--format', 'json',
-        '--timeout', '10',
-        '--delay', '50',
+        '--timeout', '5',
+        '--delay', '0',
         '--waf-evasion',
-        '--remote-payloads', 'portswigger,payloadbox',
+        '--deep-domxss',
+        '--mining-dict',
+        '--mining-dom',
+        '--follow-redirects',
         '-o', pathMod.join(ctx.outputDir, 'dalfox.txt'),
       ], line => {
         try {
@@ -96,7 +99,7 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
             })
           }
         } catch { /* text line */ }
-      })
+      }, 22_000)
       try {
         const outFile = pathMod.join(ctx.outputDir, 'dalfox.txt')
         if (fs.existsSync(outFile)) {
@@ -123,38 +126,8 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
     }
   }
 
-  // Node.js reflection testing
-  const testUrls = liveUrls.slice(0, 10)
-  for (const baseUrl of testUrls) {
-    if (ctx.isCancel()) break
-    for (const param of COMMON_PARAMS.slice(0, 10)) {
-      if (ctx.isCancel()) break
-      for (const { p, detect } of XSS_PAYLOADS.slice(0, 5)) {
-        try {
-          const testUrl = `${baseUrl}?${param}=${encodeURIComponent(p)}`
-          const response = await httpsGet(ctx, testUrl, 5000)
-          if (response && response.includes(detect) && !response.includes('&lt;')) {
-            const alreadyFound = results.find(r => r.url.startsWith(baseUrl) && r.parameter === param)
-            if (!alreadyFound) {
-              results.push({
-                url: testUrl,
-                parameter: param,
-                payload: p,
-                type: 'reflected',
-                severity: 'high',
-                evidence: 'Raw payload reflected in response body without encoding',
-                remediation: 'HTML-encode all user-controlled output. Set Content-Security-Policy header. Use a templating engine with auto-escaping.',
-              })
-            }
-            break
-          }
-        } catch { /* ignore */ }
-      }
-    }
-  }
-
   // DOM XSS detection from JS files
-  const jsFiles = jsEndpoints.filter(e => e.url.endsWith('.js') && e.url.startsWith('http')).slice(0, 20)
+  const jsFiles = jsEndpoints.filter(e => e.url.endsWith('.js') && e.url.startsWith('http')).slice(0, 5)
   const DOM_SINKS = [
     { re: /innerHTML\s*=/g, name: 'innerHTML sink', severity: 'high' as const },
     { re: /outerHTML\s*=/g, name: 'outerHTML sink', severity: 'high' as const },
@@ -196,7 +169,7 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
     { header: 'Referer', payload: 'https://evil.com"><script>alert(1)</script>' },
     { header: 'X-Forwarded-For', payload: '"><script>alert(1)</script>' },
   ]
-  for (const baseUrl of liveUrls.slice(0, 3)) {
+  for (const baseUrl of liveUrls.slice(0, 2)) {
     for (const { header, payload } of HEADER_PAYLOADS) {
       const response = await fetchWithHeader(baseUrl, header, payload)
       if (response && response.includes('<script>alert(1)</script>') && !response.includes('&lt;')) {
@@ -221,24 +194,7 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
     return true
   })
 
-  // jwt-hack: detect and attack JWT tokens found in responses/parameters
-  if (hasBinary(ctx, 'jwt-hack')) {
-    const jwtUrls = liveUrls.filter(u => u.includes('token=') || u.includes('jwt=') || u.includes('auth=') || u.includes('Bearer')).slice(0, 10)
-    if (jwtUrls.length > 0) {
-      ctx.log('jwt-hack', `JWT analysis on ${jwtUrls.length} endpoints`, 'info')
-      for (const url of jwtUrls) {
-        if (ctx.isCancel()) break
-        await runBinary(ctx, 'jwt-hack', ['decode', '--url', url], line => {
-          if (line.includes('alg') || line.includes('none') || line.includes('HS256')) {
-            ctx.log('jwt-hack', `[JWT] ${line.trim()}`, 'info')
-          }
-          if (line.toLowerCase().includes('none') || line.toLowerCase().includes('vulnerable')) {
-            deduped.push({ url, parameter: 'jwt', payload: 'alg:none', type: 'jwt', severity: 'high', evidence: line.trim(), remediation: 'Validate JWT algorithm server-side. Reject alg:none tokens. Use asymmetric keys (RS256).', tool: 'jwt-hack' })
-          }
-        })
-      }
-    }
-  }
+  // jwt-hack removed — no Windows binary release
 
   // ppmap: prototype pollution vulnerability detection
   if (hasBinary(ctx, 'ppmap') && liveUrls.length > 0) {
@@ -266,14 +222,14 @@ export async function runXss(ctx: ScanContext, liveUrls: string[], jsEndpoints: 
   // qsreplace: inject payloads into all URL parameters for mass reflection check
   if (hasBinary(ctx, 'qsreplace') && liveUrls.filter(u => u.includes('?')).length > 0) {
     const paramUrls = liveUrls.filter(u => u.includes('?')).slice(0, 30).join('\n')
-    const QS_PAYLOADS = ['"><svg onload=alert(1)>', "';alert(1)//", '${alert(1)}']
+    const QS_PAYLOADS = ['"><svg onload=alert(1)>', "';alert(1)//"]
     for (const payload of QS_PAYLOADS) {
       if (ctx.isCancel()) break
       const payloadUrls: string[] = []
       await runBinaryStdin(ctx, 'qsreplace', [payload], paramUrls, line => {
         if (line.startsWith('http')) payloadUrls.push(line.trim())
       })
-      for (const testUrl of payloadUrls.slice(0, 20)) {
+      for (const testUrl of payloadUrls.slice(0, 10)) {
         if (ctx.isCancel()) break
         try {
           const response = await httpsGet(ctx, testUrl, 5000)

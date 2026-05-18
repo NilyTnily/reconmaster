@@ -108,7 +108,7 @@ async function runShuffleDns(ctx: ScanContext, found: Map<string, { host: string
       found.set(h, { host: h, source: 'shuffledns' })
       ctx.log('shuffledns', `Found: ${h}`, 'success')
     }
-  }, 90_000)
+  }, 20_000)
 }
 
 async function runAlterx(ctx: ScanContext, found: Map<string, { host: string; source: string }>) {
@@ -119,10 +119,10 @@ async function runAlterx(ctx: ScanContext, found: Map<string, { host: string; so
   await runBinary(ctx, 'alterx', ['-l', subsFile, '-silent', '-enrich'], line => {
     const h = line.trim().toLowerCase()
     if (h && h.endsWith(ctx.target) && !found.has(h)) alterxResults.push(h)
-  }, 60_000)
-  // Verify alterx permutations via DNS
+  }, 15_000)
+  // Verify alterx permutations via DNS — cap to top 20 to stay within budget
   const batchSize = 30
-  for (let i = 0; i < alterxResults.length && !ctx.isCancel(); i += batchSize) {
+  for (let i = 0; i < Math.min(alterxResults.length, 20) && !ctx.isCancel(); i += batchSize) {
     const batch = alterxResults.slice(i, i + batchSize)
     await Promise.all(batch.map(async h => {
       try {
@@ -142,7 +142,7 @@ function quickProbeHost(ctx: ScanContext, host: string): Promise<{ status: numbe
     const tryScheme = (_scheme: string) => new Promise<{ status: number; title?: string; cdn?: string } | null>(res => {
       try {
         const req = https.request(
-          { hostname: host, path: '/', method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 ReconMaster/1.0', 'Host': host }, timeout: 5000, rejectUnauthorized: false },
+          { hostname: host, path: '/', method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 ReconMaster/1.0', 'Host': host }, timeout: 3000, rejectUnauthorized: false },
           (r) => {
             let body = ''
             let settled = false
@@ -186,18 +186,21 @@ export async function runSubdomains(ctx: ScanContext) {
 
   await Promise.all([
     hasBinary(ctx, 'subfinder')
-      ? runBinary(ctx, 'subfinder', ['-d', ctx.target, '-silent', '-all', '-timeout', '30', '-t', '50'], line => {
-          if (line && line.includes(ctx.target)) found.set(line.trim(), { host: line.trim(), source: 'subfinder' })
-        }, 90_000)
+      ? runBinary(ctx, 'subfinder', [
+          '-d', ctx.target, '-silent', '-all', '-recursive',
+          '-timeout', '15', '-t', '100', '-max-time', '18',
+        ], line => {
+          const h = line.trim().toLowerCase()
+          if (h && h.endsWith(ctx.target) && !found.has(h)) found.set(h, { host: h, source: 'subfinder' })
+        }, 20_000)
       : Promise.resolve(),
     hasBinary(ctx, 'amass')
       ? (() => {
           const outFile = pathMod.join(ctx.outputDir, 'amass_out.txt')
-          // Use stdio:ignore + -o file so amass has no console handles → no terminal window
           return runBinaryFile(
             ctx, 'amass',
-            ['enum', '-passive', '-d', ctx.target, '-timeout', '3', '-silent', '-o', outFile],
-            200_000,
+            ['enum', '-passive', '-d', ctx.target, '-timeout', '1', '-silent', '-o', outFile],
+            20_000,
             { AMASS_HOME: ctx.outputDir },
           ).then(() => {
             try {
@@ -214,31 +217,14 @@ export async function runSubdomains(ctx: ScanContext) {
       ? runBinary(ctx, 'assetfinder', ['--subs-only', ctx.target], line => {
           const h = line.trim().toLowerCase()
           if (h && h.endsWith(ctx.target) && !found.has(h)) found.set(h, { host: h, source: 'assetfinder' })
-        }, 60_000)
+        }, 15_000)
       : Promise.resolve(),
-    // puredns: high-accuracy mass DNS brute-forcer with public resolvers
-    hasBinary(ctx, 'puredns')
-      ? (() => {
-          const resolversFilePuredns = pathMod.join(ctx.outputDir, 'resolvers_puredns.txt')
-          const wordlistFilePuredns = pathMod.join(ctx.outputDir, 'puredns_words.txt')
-          fs.writeFileSync(resolversFilePuredns, ['1.1.1.1', '8.8.8.8', '9.9.9.9', '208.67.222.222', '8.8.4.4', '1.0.0.1'].join('\n'))
-          fs.writeFileSync(wordlistFilePuredns, COMMON_SUBDOMAINS.join('\n'))
-          ctx.log('puredns', `Mass DNS brute-force with ${COMMON_SUBDOMAINS.length} words`, 'info')
-          return runBinary(ctx, 'puredns', ['bruteforce', wordlistFilePuredns, ctx.target, '-r', resolversFilePuredns, '--wildcard-tests', '0'], line => {
-            const h = line.trim().toLowerCase()
-            if (h && h.endsWith(ctx.target) && !found.has(h)) {
-              found.set(h, { host: h, source: 'puredns' })
-              ctx.log('puredns', `Found: ${h}`, 'success')
-            }
-          }, 120_000)
-        })()
-      : Promise.resolve(),
+    // puredns removed — no Windows binary release
     hasBinary(ctx, 'shuffledns')
       ? runShuffleDns(ctx, found)
       : Promise.resolve(),
-    // findomain: fast multi-source subdomain finder
     hasBinary(ctx, 'findomain')
-      ? runBinary(ctx, 'findomain', ['-t', ctx.target, '-u', pathMod.join(ctx.outputDir, 'findomain.txt'), '--threads', '8', '--quiet'], () => {}, 60_000).then(() => {
+      ? runBinary(ctx, 'findomain', ['-t', ctx.target, '-u', pathMod.join(ctx.outputDir, 'findomain.txt'), '--threads', '8', '--quiet'], () => {}, 15_000).then(() => {
           try {
             const lines = fs.readFileSync(pathMod.join(ctx.outputDir, 'findomain.txt'), 'utf-8').split('\n')
             for (const line of lines) {
@@ -248,15 +234,8 @@ export async function runSubdomains(ctx: ScanContext) {
           } catch { /* ok */ }
         })
       : Promise.resolve(),
-    // chaos-client: ProjectDiscovery public chaos dataset
-    hasBinary(ctx, 'chaos-client')
-      ? runBinary(ctx, 'chaos-client', ['-d', ctx.target, '-silent'], line => {
-          const h = line.trim().toLowerCase()
-          if (h && h.endsWith(ctx.target) && !found.has(h)) found.set(h, { host: h, source: 'chaos' })
-        }, 30_000)
-      : Promise.resolve(),
+    // chaos-client removed — no Windows binary release
     subdomainsFromApis(ctx, found),
-    subdomainsFromBrute(ctx, found),
   ])
 
   // After initial collection, run alterx to generate permutations
@@ -264,30 +243,15 @@ export async function runSubdomains(ctx: ScanContext) {
     await runAlterx(ctx, found)
   }
 
-  // gotator: permutation generation from discovered subdomains
-  if (hasBinary(ctx, 'gotator') && found.size > 0) {
-    const subsFile = pathMod.join(ctx.outputDir, 'subs_for_gotator.txt')
-    const prefixes = Array.from(found.keys()).map(h => h.replace(`.${ctx.target}`, '')).filter(p => !p.includes('.'))
-    fs.writeFileSync(subsFile, prefixes.join('\n'))
-    ctx.log('gotator', `Generating permutations from ${prefixes.length} subdomain prefixes`, 'info')
-    const batchGotator: string[] = []
-    await runBinary(ctx, 'gotator', ['-sub', subsFile, '-silent', '-depth', '1'], line => {
-      const h = line.trim().toLowerCase()
-      if (h && h.endsWith(ctx.target) && !found.has(h)) batchGotator.push(h)
-    }, 60_000)
-    for (let i = 0; i < batchGotator.length && !ctx.isCancel(); i += 30) {
-      await Promise.all(batchGotator.slice(i, i + 30).map(async h => {
-        try { await dns.resolve4(h); if (!found.has(h)) found.set(h, { host: h, source: 'gotator' }) } catch { /* unresolvable */ }
-      }))
-    }
-  }
-
-  // dnsx: bulk DNS resolver — verify and enrich all collected subdomains
+  // dnsx: bulk DNS resolver — verify all collected subdomains and pull A/CNAME records
   if (hasBinary(ctx, 'dnsx') && found.size > 0) {
     const dnsxFile = pathMod.join(ctx.outputDir, 'all_subs_dnsx.txt')
     fs.writeFileSync(dnsxFile, Array.from(found.keys()).join('\n'))
     ctx.log('dnsx', `Bulk DNS verification of ${found.size} subdomains`, 'info')
-    await runBinary(ctx, 'dnsx', ['-l', dnsxFile, '-silent', '-a', '-resp'], line => {
+    await runBinary(ctx, 'dnsx', [
+      '-l', dnsxFile, '-silent', '-a', '-cname', '-resp', '-rcode', 'noerror',
+      '-t', '100', '-rl', '500',
+    ], line => {
       const m = line.match(/^([a-z0-9._-]+)\s+\[/)
       if (m) {
         const sub = m[1].trim().toLowerCase()
@@ -296,25 +260,13 @@ export async function runSubdomains(ctx: ScanContext) {
           ctx.log('dnsx', `Discovered: ${sub}`, 'success')
         }
       }
-    }, 120_000)
-  }
-
-  // subzy: subdomain takeover detection on all discovered subdomains
-  if (hasBinary(ctx, 'subzy') && found.size > 0) {
-    const subsFile = pathMod.join(ctx.outputDir, 'all_subs_subzy.txt')
-    fs.writeFileSync(subsFile, Array.from(found.keys()).join('\n'))
-    ctx.log('subzy', `Checking ${found.size} subdomains for takeover vulnerabilities`, 'info')
-    await runBinary(ctx, 'subzy', ['run', '--targets', subsFile, '--hide-good', '--concurrency', '50'], line => {
-      if (line.includes('[VULNERABLE]') || line.toLowerCase().includes('vulnerable')) {
-        ctx.log('subzy', `[TAKEOVER] ${line.trim()}`, 'warn')
-      }
-    }, 90_000)
+    }, 20_000)
   }
 
   ctx.log('subdomains', `Enriching ${found.size} subdomains (DNS + HTTP probe)...`, 'info')
 
   const results = await Promise.all(
-    Array.from(found.values()).map(async sub => {
+    Array.from(found.values()).slice(0, 30).map(async sub => {
       let ip: string | undefined
       let status: number | undefined
       let title: string | undefined

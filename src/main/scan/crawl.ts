@@ -144,16 +144,29 @@ export async function runCrawl(ctx: ScanContext, liveUrls: string[]) {
   await Promise.all([
     // katana: deep JS-aware crawler
     hasBinary(ctx, 'katana')
-      ? runBinary(ctx, 'katana', ['-list', urlsFile, '-silent', '-jc', '-jsl', '-d', '3', '-c', '20', '-timeout', '10', '-rl', '150', '-aff'], line => {
+      ? runBinary(ctx, 'katana', [
+          '-list', urlsFile, '-silent',
+          '-jc', '-jsl', '-form-extraction',
+          '-known-files', 'robotstxt,sitemapxml',
+          '-ef', 'css,png,jpg,gif,ico,svg,woff,woff2,ttf,eot,mp4,webp',
+          '-d', '2', '-c', '30', '-timeout', '5', '-rl', '200',
+          '-aff',
+        ], line => {
           if (line.startsWith('http')) results.push({ url: line, source: 'katana', type: 'link' })
-        }, 180_000)
+        }, 20_000)
       : crawlNodeFallback(ctx, liveUrls, results),
 
-    // gau: fetch all known URLs from archives
+    // gau: fetch all known URLs from multiple archives (Wayback, AlienVault, Common Crawl)
     hasBinary(ctx, 'gau')
-      ? runBinary(ctx, 'gau', ['--blacklist', 'png,jpg,gif,svg,ico,woff,woff2,ttf,eot,css,mp4,zip', ctx.target], line => {
+      ? runBinary(ctx, 'gau', [
+          '--blacklist', 'png,jpg,gif,svg,ico,woff,woff2,ttf,eot,css,mp4,zip,webp,pdf',
+          '--providers', 'wayback,otx,commoncrawl',
+          '--threads', '5',
+          '--timeout', '15',
+          ctx.target,
+        ], line => {
           if (line.startsWith('http')) results.push({ url: line.trim(), source: 'gau', type: 'link' })
-        }, 120_000)
+        }, 20_000)
       : Promise.resolve(),
 
     // waybackurls: Wayback Machine historical URLs
@@ -175,40 +188,36 @@ export async function runCrawl(ctx: ScanContext, liveUrls: string[]) {
       ? runBinary(ctx, 'gospider', ['-s', liveUrls[0], '-c', '5', '-d', '1', '--quiet', '--no-redirect'], line => {
           const m = line.match(/\[url\]\s*-\s*\[(\d+)\]\s*-\s*(https?:\/\/\S+)/)
           if (m) results.push({ url: m[2], source: 'gospider', type: 'link' })
-        }, 120_000)
+        }, 15_000)
       : Promise.resolve(),
 
-    // subjs: collect all JavaScript file URLs from live hosts
     hasBinary(ctx, 'subjs')
       ? runBinary(ctx, 'subjs', ['-i', urlsFile, '-c', '20'], line => {
           const u = line.trim()
           if (u.startsWith('http') && u.includes('.js')) results.push({ url: u, source: 'subjs', type: 'endpoint' })
-        })
+        }, 12_000)
       : Promise.resolve(),
 
-    // cariddi: deep crawler with built-in secret & endpoint detection
     hasBinary(ctx, 'cariddi') && liveUrls.length > 0
-      ? runBinary(ctx, 'cariddi', ['-u', liveUrls[0], '-s', '-e', '-d', '2', '-t', '10'], line => {
+      ? runBinary(ctx, 'cariddi', ['-u', liveUrls[0], '-s', '-e', '-d', '1', '-t', '10'], line => {
           if (line.startsWith('http')) results.push({ url: line.trim(), source: 'cariddi', type: 'link' })
           else if (line.includes('SECRET') || line.includes('API') || line.includes('KEY')) {
             ctx.log('cariddi', `[SECRET] ${line.trim()}`, 'warn')
           }
-        })
+        }, 15_000)
       : Promise.resolve(),
 
-    // xcrawl3r: configurable recursive crawler
     hasBinary(ctx, 'xcrawl3r') && liveUrls.length > 0
-      ? runBinary(ctx, 'xcrawl3r', ['-u', liveUrls[0], '--depth', '2', '--silent'], line => {
+      ? runBinary(ctx, 'xcrawl3r', ['-u', liveUrls[0], '--depth', '1', '--silent'], line => {
           if (line.startsWith('http')) results.push({ url: line.trim(), source: 'xcrawl3r', type: 'link' })
-        })
+        }, 15_000)
       : Promise.resolve(),
 
-    // urlhunter: mine URLs from Common Crawl archives (no API key required)
     hasBinary(ctx, 'urlhunter')
       ? (() => {
           const urlhunterOut = pathMod.join(ctx.outputDir, 'urlhunter.txt')
           ctx.log('urlhunter', `Mining Common Crawl archives for ${ctx.target}`, 'info')
-          return runBinary(ctx, 'urlhunter', ['-target', ctx.target, '-date', 'latest', '-output', urlhunterOut], () => {}, 120_000).then(() => {
+          return runBinary(ctx, 'urlhunter', ['-target', ctx.target, '-date', 'latest', '-output', urlhunterOut], () => {}, 15_000).then(() => {
             try {
               for (const line of fs.readFileSync(urlhunterOut, 'utf-8').split('\n')) {
                 const u = line.trim()
@@ -221,15 +230,7 @@ export async function runCrawl(ctx: ScanContext, liveUrls: string[]) {
         })()
       : Promise.resolve(),
 
-    // mantra: scan HTTP responses for exposed API keys and secrets
-    hasBinary(ctx, 'mantra') && liveUrls.length > 0
-      ? runBinaryStdin(ctx, 'mantra', [], liveUrls.slice(0, 20).join('\n'), line => {
-          if (line && (line.includes('[+]') || line.toLowerCase().includes('found') || line.includes('KEY') || line.includes('SECRET'))) {
-            ctx.log('mantra', `[SECRET] ${line.trim()}`, 'warn')
-            results.push({ url: liveUrls[0], source: 'mantra', type: 'secret', severity: 'high', match: line.trim().slice(0, 200) })
-          }
-        }, 60_000)
-      : Promise.resolve(),
+    // mantra removed — no Windows binary release
   ])
 
   // Deduplicate URLs
@@ -240,35 +241,7 @@ export async function runCrawl(ctx: ScanContext, liveUrls: string[]) {
     return true
   })
 
-  // jsluice: extract URLs, secrets, and endpoints from discovered JS files
-  if (hasBinary(ctx, 'jsluice')) {
-    const jsFiles = deduped.filter(r => r.url.endsWith('.js') && r.url.startsWith('http')).slice(0, 30)
-    if (jsFiles.length > 0) {
-      ctx.log('jsluice', `Analysing ${jsFiles.length} JavaScript files for secrets and endpoints`, 'info')
-      const jsUrlsFile = pathMod.join(ctx.outputDir, 'js_files.txt')
-      fs.writeFileSync(jsUrlsFile, jsFiles.map(r => r.url).join('\n'))
-      await runBinary(ctx, 'jsluice', ['urls', '-i', jsUrlsFile], line => {
-        try {
-          const obj = JSON.parse(line)
-          const u = obj.url || obj.value
-          if (u && u.startsWith('http') && !deduped.find(r => r.url === u)) {
-            deduped.push({ url: u, source: 'jsluice', type: 'endpoint' })
-          }
-        } catch {
-          if (line.startsWith('http')) deduped.push({ url: line.trim(), source: 'jsluice', type: 'endpoint' })
-        }
-      })
-      await runBinary(ctx, 'jsluice', ['secrets', '-i', jsUrlsFile], line => {
-        try {
-          const obj = JSON.parse(line)
-          const name = obj.kind || obj.type || 'Secret'
-          const val = obj.value || obj.match || ''
-          const masked = val.length > 8 ? val.slice(0, 4) + '****' + val.slice(-4) : '****'
-          ctx.log('jsluice', `[SECRET:${name}] ${masked}`, 'warn')
-        } catch { /* not json */ }
-      })
-    }
-  }
+  // jsluice removed — no pre-built release binaries; JS secret scanning done inline
 
   ctx.log('crawl', `Found ${deduped.length} endpoints/links`, 'success')
   ctx.phaseEnd('crawl', deduped)

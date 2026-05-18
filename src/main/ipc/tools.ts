@@ -32,40 +32,40 @@ export const TOOL_DEFS = [
   { name: 'feroxbuster', exe: 'feroxbuster.exe', desc: 'Recursive directory & file brute-forcer' },
   { name: 'crlfuzz', exe: 'crlfuzz.exe', desc: 'CRLF injection vulnerability scanner' },
   // hakrawler removed — no binary releases; katana + gospider cover web crawling
-  { name: 'puredns', exe: 'puredns.exe', desc: 'Mass DNS resolver and subdomain brute-forcer with wildcard filtering' },
+  // puredns removed — Linux/macOS only (no Windows binary release)
   { name: 'findomain', exe: 'findomain.exe', desc: 'Fast multi-source subdomain discovery (crt.sh, Virustotal, Sublist3r sources)' },
-  { name: 'subzy', exe: 'subzy.exe', desc: 'Subdomain takeover vulnerability checker' },
-  { name: 'gotator', exe: 'gotator.exe', desc: 'Subdomain permutation and alteration generator' },
-  { name: 'chaos-client', exe: 'chaos-client.exe', desc: 'ProjectDiscovery chaos public dataset — millions of known subdomains' },
+  // subzy removed — no releases at all
+  // gotator removed — release assets are empty (no binaries published)
+  // chaos-client removed — no Windows binary in releases
   { name: 'rustscan', exe: 'rustscan.exe', desc: 'Ultra-fast port scanner (scans all 65535 ports in seconds)' },
   { name: 'uncover', exe: 'uncover.exe', desc: 'Search-engine host discovery via Shodan, Censys, FOFA, Hunter' },
   { name: 'smap', exe: 'smap.exe', desc: 'Passive port scanner using Shodan Internet data (no direct probing)' },
-  { name: 'cloudlist', exe: 'cloudlist.exe', desc: 'Cloud asset enumeration across AWS, GCP, Azure and more' },
+  // cloudlist removed — no Windows binary in releases
   // zgrab2 removed — zmap does not provide pre-built Windows binaries
   { name: 'webanalyze', exe: 'webanalyze.exe', desc: 'Wappalyzer-based technology fingerprinting with full rule set' },
   { name: 'httprobe', exe: 'httprobe.exe', desc: 'Probe a list of domains for live HTTP/HTTPS servers' },
   // gf removed — no pre-built Windows binaries; install via: go install github.com/tomnomnom/gf@latest
   { name: 'unfurl', exe: 'unfurl.exe', desc: 'Parse and analyse URLs — extract domains, paths, keys, values' },
   { name: 'proxify', exe: 'proxify.exe', desc: 'HTTP request/response proxy with on-the-fly traffic capture and matching' },
-  { name: 'jsluice', exe: 'jsluice.exe', desc: 'Extract URLs, endpoints, and secrets from JavaScript files' },
+  // jsluice removed — no pre-built release binaries (build from source only)
   { name: 'subjs', exe: 'subjs.exe', desc: 'Collect JavaScript file URLs from a list of live hosts' },
   { name: 'cariddi', exe: 'cariddi.exe', desc: 'Deep web crawler with built-in secret and endpoint detection' },
   { name: 'urlhunter', exe: 'urlhunter.exe', desc: 'Mine known URLs from Common Crawl index without downloading archives' },
   { name: 'xcrawl3r', exe: 'xcrawl3r.exe', desc: 'Configurable recursive web crawler with scope control and JS parsing' },
   { name: 'x8', exe: 'x8.exe', desc: 'Hidden HTTP parameter discovery via smart fuzzing and diff analysis' },
   { name: 'nomore403', exe: 'nomore403.exe', desc: '403 Forbidden bypass using header manipulation and path encoding tricks' },
-  { name: 'shortscan', exe: 'shortscan.exe', desc: 'IIS short filename (8.3) vulnerability scanner' },
-  { name: 'jwt-hack', exe: 'jwt-hack.exe', desc: 'JWT analysis, cracking, and attack tool (alg:none, key confusion, brute)' },
+  // shortscan removed — no releases published on GitHub
+  // jwt-hack removed — only Linux/macOS binaries available
   { name: 'qsreplace', exe: 'qsreplace.exe', desc: 'Replace URL query string values — useful for mass payload injection' },
   { name: 'cvemap', exe: 'cvemap.exe', desc: 'CVE database search — find CVEs by product, vendor, severity, CVSS' },
   { name: 'trufflehog', exe: 'trufflehog.exe', desc: 'Deep secret scanning for credentials, API keys, and tokens in files/repos' },
   // ppmap removed — JavaScript/Node.js tool, no pre-built Windows binaries
   { name: 'osv-scanner', exe: 'osv-scanner.exe', desc: 'Open Source Vulnerability scanner using the OSV database' },
-  { name: 'jaeles', exe: 'jaeles.exe', desc: 'Signature-based web application scanner with active/passive rules' },
+  // jaeles removed — only Linux/macOS binaries available
   { name: 'notify', exe: 'notify.exe', desc: 'Push scan findings via Slack, Discord, Telegram, email, and more' },
   { name: 'hetty', exe: 'hetty.exe', desc: 'HTTP toolkit with intercept proxy, replay, and search for security research' },
   { name: 'cent', exe: 'cent.exe', desc: 'Community nuclei template manager — pull and organize thousands of templates' },
-  { name: 'mantra', exe: 'mantra.exe', desc: 'Find secrets and API keys hidden inside HTTP responses and JavaScript' },
+  // mantra removed — only Linux binaries available
   { name: 'surf', exe: 'surf.exe', desc: 'SSRF parameter discovery via JavaScript analysis and endpoint crawling' },
 ]
 
